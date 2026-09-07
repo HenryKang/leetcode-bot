@@ -13,10 +13,13 @@ crons = ["*/15 * * * *", "0 13 * * 1"]
 binding = "DB"
 database_name = "kig_leetcode"
 # Fill this in after `wrangler d1 create kig_leetcode`
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "2e2bcad9-f0fb-43c4-8fb1-82a65f33219e"
 
 [vars]
-# Non-secret channel/guild config. Secrets (bot token, public key) go via `wrangler secret put`.
-ANNOUNCE_CHANNEL_ID = "REPLACE_WITH_LEETCODE_CHANNEL_ID"
-SUMMARY_CHANNEL_ID = "REPLACE_WITH_LEETCODE_CHANNEL_ID"
-GUILD_ID = "REPLACE_WITH_KIG_GUILD_ID"
+# Non-secret config. The only real secret is DISCORD_BOT_TOKEN, set via
+# `wrangler secret put DISCORD_BOT_TOKEN`. App ID and Public Key are public.
+ANNOUNCE_CHANNEL_ID = "1477080627332513997"
+SUMMARY_CHANNEL_ID = "1477080627332513997"
+GUILD_ID = "1473186651206455393"
+DISCORD_APPLICATION_ID = "1546401996620431410"
+DISCORD_PUBLIC_KEY = "d9f53e1c2f8bf56c7729a2ec3660df030d573b01c6d24f3e236ac2d1f30d8f0d"

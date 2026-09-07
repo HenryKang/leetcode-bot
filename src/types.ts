@@ -2,11 +2,11 @@
 
 export interface Env {
   DB: D1Database;
-  // secrets (wrangler secret put)
-  DISCORD_PUBLIC_KEY: string;
+  // secret (wrangler secret put) — the ONLY real secret
   DISCORD_BOT_TOKEN: string;
+  // vars (wrangler.toml [vars]) — all non-secret
+  DISCORD_PUBLIC_KEY: string;
   DISCORD_APPLICATION_ID: string;
-  // vars (wrangler.toml [vars])
   GUILD_ID: string;
   ANNOUNCE_CHANNEL_ID: string;
   SUMMARY_CHANNEL_ID: string;
