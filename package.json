@@ -1,0 +1,26 @@
+{
+  "name": "kig-leetcode-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "KIG Discord LeetCode accountability bot (Cloudflare Workers + D1)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "register": "tsx scripts/register-commands.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json",
+    "db:init": "wrangler d1 execute kig_leetcode --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute kig_leetcode --local --file=./schema.sql",
+    "leetcode:smoke": "tsx scripts/smoke-leetcode.ts"
+  },
+  "dependencies": {
+    "discord-interactions": "^3.4.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "@types/node": "^26.4.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.2",
+    "wrangler": "^3.78.0"
+  }
+}

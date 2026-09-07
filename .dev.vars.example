@@ -1,0 +1,10 @@
+# Copy to `.dev.vars` for local `wrangler dev`, and register-commands script.
+# These are SECRETS — never commit .dev.vars (it is gitignored).
+DISCORD_PUBLIC_KEY=your_app_public_key
+DISCORD_BOT_TOKEN=your_bot_token
+DISCORD_APPLICATION_ID=your_application_id
+
+# Non-secret, but handy to have locally too (mirror wrangler.toml [vars]):
+GUILD_ID=your_kig_guild_id
+ANNOUNCE_CHANNEL_ID=your_leetcode_channel_id
+SUMMARY_CHANNEL_ID=your_leetcode_channel_id
