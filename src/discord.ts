@@ -69,6 +69,33 @@ export async function editOriginalResponse(
   }
 }
 
+/**
+ * Send a private DM to a user. Opens (or reuses) the bot↔user DM channel, then
+ * posts. Returns false if the user disallows DMs from server members (or any error).
+ */
+export async function sendDM(env: Env, userId: string, content: string): Promise<boolean> {
+  const chRes = await fetch(`${API}/users/@me/channels`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bot ${env.DISCORD_BOT_TOKEN}` },
+    body: JSON.stringify({ recipient_id: userId }),
+  });
+  if (!chRes.ok) {
+    console.log(`open DM failed for ${userId}: ${chRes.status} ${await chRes.text()}`);
+    return false;
+  }
+  const ch = (await chRes.json()) as { id: string };
+  const msgRes = await fetch(`${API}/channels/${ch.id}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bot ${env.DISCORD_BOT_TOKEN}` },
+    body: JSON.stringify({ content }),
+  });
+  if (!msgRes.ok) {
+    console.log(`DM send failed for ${userId}: ${msgRes.status} ${await msgRes.text()}`);
+    return false;
+  }
+  return true;
+}
+
 /** Post a message to a channel via the bot token. `pings` controls notifications. */
 export async function postMessage(
   env: Env,

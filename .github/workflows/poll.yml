@@ -7,6 +7,7 @@ on:
   schedule:
     - cron: "*/15 * * * *" # poll for new solves
     - cron: "0 13 * * 1" # weekly recap (Mon 13:00 UTC ≈ Mon morning ET)
+    - cron: "0 16 * * 0" # Sunday nudge (16:00 UTC ≈ noon ET) to members behind goal
   workflow_dispatch: # manual "Run workflow" button (runs a poll)
 
 concurrency:
@@ -34,5 +35,15 @@ jobs:
       - name: Trigger weekly summary
         run: |
           curl -fsS "${WORKER_URL}/admin/summary?key=${ADMIN_KEY}"
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+
+  remind:
+    if: github.event.schedule == '0 16 * * 0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: DM members behind their weekly goal
+        run: |
+          curl -fsS "${WORKER_URL}/admin/remind?key=${ADMIN_KEY}"
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}

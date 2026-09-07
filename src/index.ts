@@ -3,6 +3,7 @@
 import { handleInteraction } from "./interactions.js";
 import { isValidRequest } from "./verify.js";
 import { runPoll } from "./poll.js";
+import { runReminders } from "./reminders.js";
 import { runWeeklySummary } from "./summary.js";
 import { WEEKLY_CRON, type Env } from "./types.js";
 
@@ -11,8 +12,8 @@ export default {
     const url = new URL(request.url);
 
     // Authenticated manual triggers — run the same jobs the cron would, on demand.
-    // Doubles as a fallback if Cloudflare cron is unreliable (drive from an external scheduler).
-    if (url.pathname === "/admin/poll" || url.pathname === "/admin/summary") {
+    // Driven by GitHub Actions (Cloudflare cron doesn't fire on this account).
+    if (url.pathname.startsWith("/admin/")) {
       if (url.searchParams.get("key") !== env.ADMIN_KEY) {
         return new Response("unauthorized", { status: 401 });
       }
@@ -21,8 +22,16 @@ export default {
         await runWeeklySummary(env, week);
         return Response.json({ ok: true, ran: "summary", week: week ?? "(ended week)" });
       }
-      const summary = await runPoll(env);
-      return Response.json({ ok: true, ran: "poll", ...summary });
+      if (url.pathname === "/admin/remind") {
+        const only = url.searchParams.get("user") ?? undefined; // optional: DM just one member (testing)
+        const r = await runReminders(env, only);
+        return Response.json({ ok: true, ran: "remind", ...r });
+      }
+      if (url.pathname === "/admin/poll") {
+        const summary = await runPoll(env);
+        return Response.json({ ok: true, ran: "poll", ...summary });
+      }
+      return new Response("unknown admin action", { status: 404 });
     }
 
     if (request.method === "GET") {
