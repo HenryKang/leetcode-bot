@@ -8,6 +8,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "register": "tsx scripts/register-commands.ts",
+    "welcome": "tsx scripts/post-welcome.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json",
     "db:init": "wrangler d1 execute kig_leetcode --remote --file=./schema.sql",
     "db:init:local": "wrangler d1 execute kig_leetcode --local --file=./schema.sql",
