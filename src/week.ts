@@ -54,6 +54,28 @@ export function endedWeekKey(): string {
   return weekKeyForTs(nowSeconds() - 24 * 3600);
 }
 
+/** Format a unix ts as a date in ET, e.g. "Sunday, September 7". */
+export function formatDateET(tsSeconds: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(tsSeconds * 1000));
+}
+
+/** Date label of the upcoming Monday (the weekly reset) in ET, e.g. "Monday, September 8". */
+export function nextResetDateLabel(fromTs: number = nowSeconds()): string {
+  for (let i = 1; i <= 7; i++) {
+    const ts = fromTs + i * 86400;
+    const wd = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(
+      new Date(ts * 1000)
+    );
+    if (wd === "Mon") return formatDateET(ts);
+  }
+  return "Monday";
+}
+
 /** Human label for a week key, e.g. "2026-W37" -> "Week 37, 2026". */
 export function weekLabel(weekKey: string): string {
   const m = weekKey.match(/^(\d{4})-W(\d{2})$/);

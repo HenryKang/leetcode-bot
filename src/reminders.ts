@@ -2,7 +2,7 @@
 
 import { listActiveMembers, weeklyUniqueCount } from "./db.js";
 import { sendDM } from "./discord.js";
-import { currentWeekKey } from "./week.js";
+import { currentWeekKey, formatDateET, nextResetDateLabel, nowSeconds } from "./week.js";
 import type { Env } from "./types.js";
 
 export interface ReminderSummary {
@@ -17,6 +17,8 @@ export interface ReminderSummary {
  */
 export async function runReminders(env: Env, onlyUserId?: string): Promise<ReminderSummary> {
   const week = currentWeekKey();
+  const today = formatDateET(nowSeconds()); // e.g. "Sunday, September 7"
+  const resetDate = nextResetDateLabel(); // e.g. "Monday, September 8"
   const members = await listActiveMembers(env.DB);
   const out: ReminderSummary = { behind: 0, sent: 0, failed: 0 };
 
@@ -29,9 +31,9 @@ export async function runReminders(env: Env, onlyUserId?: string): Promise<Remin
     out.behind++;
     const remaining = m.weekly_goal - count;
     const msg =
-      `⏰ **Weekly LeetCode check-in**\n` +
+      `⏰ **Weekly LeetCode check-in** — ${today}\n` +
       `You're at **${count}/${m.weekly_goal}** this week — **${remaining} more** to hit your goal ` +
-      `before it resets **Monday 12:00 AM ET**. Still time — go get 'em! 💪`;
+      `before the week resets **${resetDate} at 12:00 AM ET**. Still time — go get 'em! 💪`;
     const ok = await sendDM(env, m.discord_user_id, msg);
     if (ok) out.sent++;
     else out.failed++;
