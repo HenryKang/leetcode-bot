@@ -8,6 +8,23 @@ import { WEEKLY_CRON, type Env } from "./types.js";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Authenticated manual triggers — run the same jobs the cron would, on demand.
+    // Doubles as a fallback if Cloudflare cron is unreliable (drive from an external scheduler).
+    if (url.pathname === "/admin/poll" || url.pathname === "/admin/summary") {
+      if (url.searchParams.get("key") !== env.ADMIN_KEY) {
+        return new Response("unauthorized", { status: 401 });
+      }
+      if (url.pathname === "/admin/summary") {
+        const week = url.searchParams.get("week") ?? undefined;
+        await runWeeklySummary(env, week);
+        return Response.json({ ok: true, ran: "summary", week: week ?? "(ended week)" });
+      }
+      const summary = await runPoll(env);
+      return Response.json({ ok: true, ran: "poll", ...summary });
+    }
+
     if (request.method === "GET") {
       return new Response("KIG LeetCode bot is running.", { status: 200 });
     }

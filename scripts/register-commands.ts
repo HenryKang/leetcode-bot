@@ -63,6 +63,10 @@ const commands = [
     name: "leaderboard",
     description: "Show this week's leaderboard of unique problems solved.",
   },
+  {
+    name: "health",
+    description: "Check each linked member: is their LeetCode feed visible and being tracked?",
+  },
 ];
 
 async function main() {

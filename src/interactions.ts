@@ -77,6 +77,10 @@ export async function handleInteraction(i: Interaction, env: Env, ctx: Execution
       return handleCommitted(i, env);
     case "leaderboard":
       return handleLeaderboard(i, env);
+    case "health":
+      // Calls LeetCode per member -> defer, then edit the reply.
+      ctx.waitUntil(doHealth(i, env));
+      return deferEphemeral();
     default:
       return ephemeralReply(`Unknown command: ${i.data.name}`);
   }
@@ -132,6 +136,40 @@ async function doLink(i: Interaction, env: Env): Promise<void> {
       i.token,
       "Something went wrong reaching LeetCode. Try again in a minute."
     );
+  }
+}
+
+async function doHealth(i: Interaction, env: Env): Promise<void> {
+  try {
+    const members = await listActiveMembers(env.DB);
+    if (members.length === 0) {
+      await editOriginalResponse(env, i.token, "No one is linked yet.");
+      return;
+    }
+    const lines: string[] = [];
+    for (const m of members) {
+      let feed: string;
+      try {
+        const recent = await getRecentSolves(m.leetcode_username, 1);
+        feed = recent.length ? "✅ visible" : "⚠️ not visible / no recent AC";
+      } catch {
+        feed = "❓ check failed";
+      }
+      const since = await statsSince(env.DB, m.discord_user_id);
+      const seen = m.last_seen_ts ? `<t:${m.last_seen_ts}:R>` : "—";
+      lines.push(
+        `• \`${m.leetcode_username}\` — feed ${feed} · tracked **${since.total}** · last solve ${seen}`
+      );
+    }
+    await editOriginalResponse(
+      env,
+      i.token,
+      `**Tracking health** (${members.length} linked)\n${lines.join("\n")}\n\n` +
+        `_“not visible” = they hid recent submissions **or** simply haven't solved lately._`
+    );
+  } catch (e) {
+    console.log(`doHealth error: ${e}`);
+    await editOriginalResponse(env, i.token, "Health check failed — try again in a moment.");
   }
 }
 

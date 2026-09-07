@@ -10,6 +10,7 @@ export interface Env {
   GUILD_ID: string;
   ANNOUNCE_CHANNEL_ID: string;
   SUMMARY_CHANNEL_ID: string;
+  ADMIN_KEY: string;
 }
 
 export interface Member {

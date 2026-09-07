@@ -23,3 +23,5 @@ SUMMARY_CHANNEL_ID = "1477080627332513997"
 GUILD_ID = "1473186651206455393"
 DISCORD_APPLICATION_ID = "1546401996620431410"
 DISCORD_PUBLIC_KEY = "d9f53e1c2f8bf56c7729a2ec3660df030d573b01c6d24f3e236ac2d1f30d8f0d"
+# ADMIN_KEY (auth for /admin/poll and /admin/summary) is a Cloudflare SECRET,
+# not committed here. Set it with:  wrangler secret put ADMIN_KEY

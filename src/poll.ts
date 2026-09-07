@@ -49,7 +49,8 @@ async function announce(env: Env, m: Member, s: RecentSolve, meta: ProblemMeta):
   });
 }
 
-async function pollMember(env: Env, m: Member): Promise<void> {
+async function pollMember(env: Env, m: Member): Promise<number> {
+  let announced = 0;
   const recents = await getRecentSolves(m.leetcode_username, 20);
   // Oldest first so announcements land in solve order and last_seen advances safely.
   recents.sort((a, b) => a.timestamp - b.timestamp);
@@ -78,19 +79,36 @@ async function pollMember(env: Env, m: Member): Promise<void> {
     });
     // Announce only genuinely-new submissions (dedup by submission_id) that also
     // add a new distinct problem to the week — so re-submits never re-announce.
-    if (isNew && !alreadyThisWeek) await announce(env, m, s, meta);
+    if (isNew && !alreadyThisWeek) {
+      await announce(env, m, s, meta);
+      announced++;
+    }
     if (s.timestamp > maxTs) maxTs = s.timestamp;
   }
   if (maxTs > m.last_seen_ts) await updateLastSeen(env.DB, m.discord_user_id, maxTs);
+  return announced;
 }
 
-export async function runPoll(env: Env): Promise<void> {
+export interface PollSummary {
+  membersChecked: number;
+  announced: number;
+  errors: string[];
+}
+
+export async function runPoll(env: Env): Promise<PollSummary> {
   const members = await listActiveMembers(env.DB);
+  const summary: PollSummary = { membersChecked: members.length, announced: 0, errors: [] };
   for (const m of members) {
     try {
-      await pollMember(env, m);
+      summary.announced += await pollMember(env, m);
     } catch (e) {
-      console.log(`poll failed for ${m.leetcode_username} (${m.discord_user_id}): ${e}`);
+      const msg = `poll failed for ${m.leetcode_username}: ${e}`;
+      console.log(msg);
+      summary.errors.push(msg);
     }
   }
+  console.log(
+    `[poll] checked=${summary.membersChecked} announced=${summary.announced} errors=${summary.errors.length}`
+  );
+  return summary;
 }

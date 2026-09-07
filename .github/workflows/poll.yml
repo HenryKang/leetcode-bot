@@ -1,0 +1,38 @@
+name: LeetCode poll
+
+# Cloudflare cron isn't firing on this account, so we drive the Worker's jobs
+# from GitHub Actions instead. The Worker still does all the LeetCode work; these
+# jobs just hit its authenticated trigger endpoints on a schedule.
+on:
+  schedule:
+    - cron: "*/15 * * * *" # poll for new solves
+    - cron: "0 13 * * 1" # weekly recap (Mon 13:00 UTC ≈ Mon morning ET)
+  workflow_dispatch: # manual "Run workflow" button (runs a poll)
+
+concurrency:
+  group: leetcode-poll
+  cancel-in-progress: false
+
+env:
+  WORKER_URL: https://kig-leetcode-bot.henrykang.workers.dev
+
+jobs:
+  poll:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger poll
+        run: |
+          curl -fsS "${WORKER_URL}/admin/poll?key=${ADMIN_KEY}"
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+
+  summary:
+    if: github.event.schedule == '0 13 * * 1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly summary
+        run: |
+          curl -fsS "${WORKER_URL}/admin/summary?key=${ADMIN_KEY}"
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
