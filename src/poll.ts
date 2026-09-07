@@ -5,6 +5,7 @@ import {
   getProblemMeta,
   insertSolveIfNew,
   listActiveMembers,
+  memberSolvedSlugInWeek,
   updateLastSeen,
   upsertProblemMeta,
 } from "./db.js";
@@ -58,6 +59,14 @@ async function pollMember(env: Env, m: Member): Promise<void> {
     if (s.timestamp <= m.last_seen_ts) continue; // already processed at/least this point
     const meta = await resolveMeta(env, s);
     const weekKey = weekKeyForTs(s.timestamp);
+    // Is this the first solve of this problem in this week? If so, it adds to the
+    // weekly distinct count and is worth announcing. Check BEFORE inserting.
+    const alreadyThisWeek = await memberSolvedSlugInWeek(
+      env.DB,
+      m.discord_user_id,
+      s.titleSlug,
+      weekKey
+    );
     const isNew = await insertSolveIfNew(env.DB, {
       submissionId: s.id,
       discordUserId: m.discord_user_id,
@@ -67,8 +76,9 @@ async function pollMember(env: Env, m: Member): Promise<void> {
       solvedAt: s.timestamp,
       weekKey,
     });
-    // insertSolveIfNew is the real dedup guard (by submission_id); announce only new rows.
-    if (isNew) await announce(env, m, s, meta);
+    // Announce only genuinely-new submissions (dedup by submission_id) that also
+    // add a new distinct problem to the week — so re-submits never re-announce.
+    if (isNew && !alreadyThisWeek) await announce(env, m, s, meta);
     if (s.timestamp > maxTs) maxTs = s.timestamp;
   }
   if (maxTs > m.last_seen_ts) await updateLastSeen(env.DB, m.discord_user_id, maxTs);

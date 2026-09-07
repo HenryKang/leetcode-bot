@@ -136,6 +136,22 @@ export async function insertSolveIfNew(db: D1Database, s: SolveInput): Promise<b
   return (res.meta.changes ?? 0) > 0;
 }
 
+/** True if the member already has a solve of this problem in the given week. */
+export async function memberSolvedSlugInWeek(
+  db: D1Database,
+  discordUserId: string,
+  titleSlug: string,
+  weekKey: string
+): Promise<boolean> {
+  const row = await db
+    .prepare(
+      "SELECT 1 FROM solves WHERE discord_user_id = ? AND title_slug = ? AND week_key = ? LIMIT 1"
+    )
+    .bind(discordUserId, titleSlug, weekKey)
+    .first();
+  return !!row;
+}
+
 /** Distinct problems a member solved within a given week. */
 export async function weeklyUniqueCount(
   db: D1Database,
