@@ -96,6 +96,7 @@ Guild commands appear in KIG instantly.
 | `/stats [member]` | Totals since linking + this-week progress |
 | `/committed` | Everyone tracked + their totals |
 | `/leaderboard` | This week's standings |
+| `/health` | Per-member: LeetCode feed visible? tracked count, last solve |
 
 ## Local development
 ```bash
@@ -107,10 +108,22 @@ Trigger the cron handlers locally with wrangler's scheduled test endpoint, e.g.
 `curl "http://localhost:8787/__scheduled?cron=*/15+*+*+*+*"` (poll) or
 `curl "http://localhost:8787/__scheduled?cron=0+13+*+*+1"` (weekly).
 
-## Scheduling notes
-Crons run in UTC (`wrangler.toml`). Poll = every 15 min. Weekly recap =
-`0 13 * * 1` (Mon 13:00 UTC ≈ 8–9am ET Monday), summarizing the week that just ended.
-Week boundaries are ISO weeks computed in America/New_York (`src/week.ts`).
+## Scheduling — driven by GitHub Actions
+Cloudflare cron triggers do **not** fire on this account (HTTP works, scheduled
+events don't — an account-level restriction). So the schedule is driven externally:
+`.github/workflows/poll.yml` hits the Worker's authenticated trigger endpoints on
+GitHub's cron:
+- every 15 min → `GET /admin/poll?key=$ADMIN_KEY` (detect + announce solves)
+- Mon 13:00 UTC → `GET /admin/summary?key=$ADMIN_KEY` (weekly recap)
+
+`ADMIN_KEY` is a Cloudflare **secret** (`wrangler secret put ADMIN_KEY`) and a
+GitHub Actions **secret** (same value). Manual runs: the workflow's "Run workflow"
+button, or `curl "$WORKER_URL/admin/poll?key=..."`.
+
+The Worker still does all the LeetCode work; GitHub only pokes it on schedule. The
+Cloudflare crons remain in `wrangler.toml` as harmless no-ops — if the account ever
+gains cron access they'd resume (polls are idempotent, so overlap is safe).
+Week boundaries are ISO weeks in America/New_York (`src/week.ts`).
 
 ## Deferred (Phase 2): Duolingo-style streaks
 Daily/weekly streaks, milestone shout-outs, and `/streak`. The schema already keeps
