@@ -54,6 +54,46 @@ export function endedWeekKey(): string {
   return weekKeyForTs(nowSeconds() - 24 * 3600);
 }
 
+/** Offset (seconds) of America/New_York at a given instant. EDT=-4h, EST=-5h. */
+function etOffsetSeconds(tsSeconds: number): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    timeZoneName: "longOffset",
+  }).formatToParts(new Date(tsSeconds * 1000));
+  const raw = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+0"; // e.g. "GMT-05:00"
+  const m = raw.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!m) return 0;
+  const sign = m[1] === "-" ? -1 : 1;
+  return sign * (Number(m[2]) * 3600 + Number(m[3] ?? "0") * 60);
+}
+
+export interface DayRange {
+  startTs: number; // unix seconds, inclusive (00:00:00 ET)
+  endTs: number; // unix seconds, exclusive (next 00:00:00 ET)
+  label: string; // e.g. "Tuesday, September 8"
+}
+
+/** The ET calendar day containing `refTs`, as a [start, end) unix range + label. */
+export function etDayRange(refTs: number): DayRange {
+  const { y, m, d } = etYMD(refTs);
+  const midnightUtc = Date.UTC(y, m - 1, d) / 1000;
+  // Solve for start: ET-midnight-as-unix = midnightUtc - offset. Offset depends on
+  // the instant, so estimate then refine once (handles DST edges).
+  let start = midnightUtc - etOffsetSeconds(refTs);
+  start = midnightUtc - etOffsetSeconds(start);
+  // End = next ET midnight (recompute offset in case DST flips overnight).
+  const nextMidnightUtc = midnightUtc + 86400;
+  let end = nextMidnightUtc - etOffsetSeconds(start);
+  end = nextMidnightUtc - etOffsetSeconds(end);
+  return { startTs: start, endTs: end, label: formatDateET(start + 3600) };
+}
+
+/** The ET day that ended most recently before now (i.e. "yesterday" in ET). */
+export function previousEtDayRange(fromTs: number = nowSeconds()): DayRange {
+  const today = etDayRange(fromTs);
+  return etDayRange(today.startTs - 3600); // an hour before today's midnight = yesterday
+}
+
 /** Format a unix ts as a date in ET, e.g. "Sunday, September 7". */
 export function formatDateET(tsSeconds: number): string {
   return new Intl.DateTimeFormat("en-US", {

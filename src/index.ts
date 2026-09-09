@@ -2,6 +2,7 @@
 
 import { handleInteraction } from "./interactions.js";
 import { isValidRequest } from "./verify.js";
+import { runDailySummary } from "./daily.js";
 import { runPoll } from "./poll.js";
 import { runReminders } from "./reminders.js";
 import { runWeeklySummary } from "./summary.js";
@@ -26,6 +27,10 @@ export default {
         const only = url.searchParams.get("user") ?? undefined; // optional: DM just one member (testing)
         const r = await runReminders(env, only);
         return Response.json({ ok: true, ran: "remind", ...r });
+      }
+      if (url.pathname === "/admin/daily") {
+        const d = await runDailySummary(env);
+        return Response.json({ ok: true, ran: "daily", ...d });
       }
       if (url.pathname === "/admin/poll") {
         const summary = await runPoll(env);

@@ -167,6 +167,22 @@ export async function weeklyUniqueCount(
   return row?.c ?? 0;
 }
 
+/** Distinct problems a member solved within a unix time range [startTs, endTs). */
+export async function rangeUniqueCount(
+  db: D1Database,
+  discordUserId: string,
+  startTs: number,
+  endTs: number
+): Promise<number> {
+  const row = await db
+    .prepare(
+      "SELECT COUNT(DISTINCT title_slug) AS c FROM solves WHERE discord_user_id = ? AND solved_at >= ? AND solved_at < ?"
+    )
+    .bind(discordUserId, startTs, endTs)
+    .first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
 /** Distinct problems solved since linking, broken down by difficulty. */
 export async function statsSince(db: D1Database, discordUserId: string): Promise<DifficultyBreakdown> {
   const res = await db

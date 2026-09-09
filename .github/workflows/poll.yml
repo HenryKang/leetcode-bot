@@ -8,6 +8,7 @@ on:
     - cron: "*/15 * * * *" # poll for new solves
     - cron: "0 13 * * 1" # weekly recap (Mon 13:00 UTC ≈ Mon morning ET)
     - cron: "0 16 * * 0" # Sunday nudge (16:00 UTC ≈ noon ET) to members behind goal
+    - cron: "5 5 * * *" # daily recap (05:05 UTC = just after midnight ET, EST & EDT)
   workflow_dispatch: # manual "Run workflow" button (runs a poll)
 
 concurrency:
@@ -45,5 +46,16 @@ jobs:
       - name: DM members behind their weekly goal
         run: |
           curl -fsS "${WORKER_URL}/admin/remind?key=${ADMIN_KEY}"
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+
+  daily:
+    if: github.event.schedule == '5 5 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Final poll, then post daily recap
+        run: |
+          curl -fsS "${WORKER_URL}/admin/poll?key=${ADMIN_KEY}"   # capture last-minute solves
+          curl -fsS "${WORKER_URL}/admin/daily?key=${ADMIN_KEY}"  # post the recap
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}

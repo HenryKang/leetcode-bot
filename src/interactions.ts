@@ -223,7 +223,7 @@ async function handleCommitted(i: Interaction, env: Env) {
   for (const m of members) {
     const s = await statsSince(env.DB, m.discord_user_id);
     lines.push(
-      `${mention(m.discord_user_id)} — **${s.total}** (🟢 ${s.easy} 🟡 ${s.medium} 🔴 ${s.hard}) · \`${m.leetcode_username}\``
+      `${mention(m.discord_user_id)} — total: **${s.total}** (🟢 ${s.easy} 🟡 ${s.medium} 🔴 ${s.hard}) · \`${m.leetcode_username}\``
     );
   }
   return {
