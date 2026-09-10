@@ -40,6 +40,14 @@ CREATE TABLE IF NOT EXISTS problem_meta (
   title       TEXT
 );
 
+-- Tracks the last "period" each periodic job completed, so jobs are self-healing:
+-- the frequent poll fires any overdue job exactly once, regardless of whether the
+-- external scheduler (GitHub Actions) dropped or delayed its exact-time trigger.
+CREATE TABLE IF NOT EXISTS job_state (
+  job_name TEXT PRIMARY KEY,   -- 'daily' | 'weekly' | 'remind'
+  last_key TEXT NOT NULL       -- the period key already handled (day label / week key)
+);
+
 -- Snapshot of each finalized week (drives history + the future streak-of-weeks feature).
 CREATE TABLE IF NOT EXISTS weekly_summary (
   week_key        TEXT NOT NULL,

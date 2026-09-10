@@ -1,15 +1,16 @@
 name: LeetCode poll
 
-# Cloudflare cron isn't firing on this account, so we drive the Worker's jobs
-# from GitHub Actions instead. The Worker still does all the LeetCode work; these
-# jobs just hit its authenticated trigger endpoints on a schedule.
+# Cloudflare cron doesn't fire on this account, so GitHub Actions drives the bot.
+# NOTE: GitHub's scheduler is best-effort and often delays/drops runs (we've seen
+# 2-5h gaps on a */15 schedule). So we DON'T rely on exact-time triggers for the
+# daily/weekly/reminder jobs — /admin/poll runs a self-healing scheduler that fires
+# any overdue periodic job exactly once. More cron lines below = more chances GitHub
+# actually runs the poll; whenever it does, overdue recaps catch up.
 on:
   schedule:
-    - cron: "*/15 * * * *" # poll for new solves
-    - cron: "0 13 * * 1" # weekly recap (Mon 13:00 UTC ≈ Mon morning ET)
-    - cron: "0 16 * * 0" # Sunday nudge (16:00 UTC ≈ noon ET) to members behind goal
-    - cron: "5 5 * * *" # daily recap (05:05 UTC = just after midnight ET, EST & EDT)
-  workflow_dispatch: # manual "Run workflow" button (runs a poll)
+    - cron: "*/10 * * * *"
+    - cron: "*/13 * * * *" # staggered extra attempts to survive GitHub throttling
+  workflow_dispatch: # manual "Run workflow" button
 
 concurrency:
   group: leetcode-poll
@@ -20,42 +21,10 @@ env:
 
 jobs:
   poll:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger poll
+      - name: Poll (also fires any overdue daily/weekly/reminder job)
         run: |
           curl -fsS "${WORKER_URL}/admin/poll?key=${ADMIN_KEY}"
-        env:
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-
-  summary:
-    if: github.event.schedule == '0 13 * * 1'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger weekly summary
-        run: |
-          curl -fsS "${WORKER_URL}/admin/summary?key=${ADMIN_KEY}"
-        env:
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-
-  remind:
-    if: github.event.schedule == '0 16 * * 0'
-    runs-on: ubuntu-latest
-    steps:
-      - name: DM members behind their weekly goal
-        run: |
-          curl -fsS "${WORKER_URL}/admin/remind?key=${ADMIN_KEY}"
-        env:
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-
-  daily:
-    if: github.event.schedule == '5 5 * * *'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Final poll, then post daily recap
-        run: |
-          curl -fsS "${WORKER_URL}/admin/poll?key=${ADMIN_KEY}"   # capture last-minute solves
-          curl -fsS "${WORKER_URL}/admin/daily?key=${ADMIN_KEY}"  # post the recap
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}

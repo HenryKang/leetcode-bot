@@ -202,6 +202,24 @@ export async function statsSince(db: D1Database, discordUserId: string): Promise
   return out;
 }
 
+export async function getJobState(db: D1Database, jobName: string): Promise<string | null> {
+  const row = await db
+    .prepare("SELECT last_key FROM job_state WHERE job_name = ?")
+    .bind(jobName)
+    .first<{ last_key: string }>();
+  return row?.last_key ?? null;
+}
+
+export async function setJobState(db: D1Database, jobName: string, lastKey: string): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO job_state (job_name, last_key) VALUES (?, ?)
+       ON CONFLICT(job_name) DO UPDATE SET last_key = excluded.last_key`
+    )
+    .bind(jobName, lastKey)
+    .run();
+}
+
 export async function saveWeeklySummary(
   db: D1Database,
   weekKey: string,

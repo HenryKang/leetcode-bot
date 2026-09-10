@@ -5,8 +5,9 @@ import { isValidRequest } from "./verify.js";
 import { runDailySummary } from "./daily.js";
 import { runPoll } from "./poll.js";
 import { runReminders } from "./reminders.js";
+import { runDueJobs } from "./scheduler.js";
 import { runWeeklySummary } from "./summary.js";
-import { WEEKLY_CRON, type Env } from "./types.js";
+import type { Env } from "./types.js";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -34,7 +35,10 @@ export default {
       }
       if (url.pathname === "/admin/poll") {
         const summary = await runPoll(env);
-        return Response.json({ ok: true, ran: "poll", ...summary });
+        // Self-healing: fire any periodic job (daily/weekly/remind) that's overdue,
+        // so recaps still go out even when the scheduler drops their exact trigger.
+        const jobs = await runDueJobs(env);
+        return Response.json({ ok: true, ran: "poll", ...summary, jobs });
       }
       return new Response("unknown admin action", { status: 404 });
     }
@@ -63,10 +67,13 @@ export default {
   },
 
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    if (event.cron === WEEKLY_CRON) {
-      ctx.waitUntil(runWeeklySummary(env));
-    } else {
-      ctx.waitUntil(runPoll(env));
-    }
+    // Note: Cloudflare cron does not fire on this account — GitHub Actions drives
+    // /admin/poll instead. Kept correct in case cron access is ever enabled.
+    ctx.waitUntil(
+      (async () => {
+        await runPoll(env);
+        await runDueJobs(env); // daily/weekly/remind, self-healing
+      })()
+    );
   },
 };

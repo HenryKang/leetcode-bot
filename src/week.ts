@@ -54,6 +54,26 @@ export function endedWeekKey(): string {
   return weekKeyForTs(nowSeconds() - 24 * 3600);
 }
 
+/** The ISO week immediately before the one containing `fromTs`. */
+export function previousWeekKey(fromTs: number = nowSeconds()): string {
+  const range = etDayRange(fromTs);
+  return weekKeyForTs(range.startTs - 7 * 86400 + 3600);
+}
+
+/** ET weekday (0=Sun..6=Sat) and hour (0..23) for a given instant. */
+export function etWeekdayHour(tsSeconds: number = nowSeconds()): { weekday: number; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    weekday: "short",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(tsSeconds * 1000));
+  const wd = parts.find((p) => p.type === "weekday")?.value ?? "Sun";
+  const hourStr = parts.find((p) => p.type === "hour")?.value ?? "0";
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return { weekday: map[wd] ?? 0, hour: Number(hourStr) % 24 };
+}
+
 /** Offset (seconds) of America/New_York at a given instant. EDT=-4h, EST=-5h. */
 function etOffsetSeconds(tsSeconds: number): number {
   const parts = new Intl.DateTimeFormat("en-US", {
