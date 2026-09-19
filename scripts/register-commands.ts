@@ -64,6 +64,10 @@ const commands = [
     description: "Show this week's leaderboard of unique problems solved.",
   },
   {
+    name: "money",
+    description: "Show how much each member owes this week ($1 per problem short of their goal).",
+  },
+  {
     name: "health",
     description: "Check each linked member: is their LeetCode feed visible and being tracked?",
   },

@@ -77,6 +77,8 @@ export async function handleInteraction(i: Interaction, env: Env, ctx: Execution
       return handleCommitted(i, env);
     case "leaderboard":
       return handleLeaderboard(i, env);
+    case "money":
+      return handleMoney(i, env);
     case "health":
       // Calls LeetCode per member -> defer, then edit the reply.
       ctx.waitUntil(doHealth(i, env));
@@ -263,6 +265,46 @@ async function handleLeaderboard(i: Interaction, env: Env) {
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
     data: {
       content: `📈 **This week's leaderboard** (unique problems)\n${body}`,
+      allowed_mentions: { parse: [] as string[] },
+    },
+  };
+}
+
+// $1 owed per problem short of the weekly goal.
+const DOLLARS_PER_MISS = 1;
+
+async function handleMoney(i: Interaction, env: Env) {
+  const week = currentWeekKey();
+  const members = await listActiveMembers(env.DB);
+  if (members.length === 0) {
+    return ephemeralReply("No one is linked yet. Be the first with `/link`!");
+  }
+  const rows: { id: string; count: number; goal: number | null; owed: number }[] = [];
+  for (const m of members) {
+    const count = await weeklyUniqueCount(env.DB, m.discord_user_id, week);
+    const goal = m.weekly_goal;
+    const shortfall = goal && goal > 0 ? Math.max(0, goal - count) : 0;
+    rows.push({ id: m.discord_user_id, count, goal, owed: shortfall * DOLLARS_PER_MISS });
+  }
+  // Biggest debt first; $0 / no-goal fall to the bottom.
+  rows.sort((a, b) => b.owed - a.owed);
+
+  const total = rows.reduce((s, r) => s + r.owed, 0);
+  const body = rows
+    .map((r) => {
+      if (!r.goal || r.goal <= 0) return `${mention(r.id)} — no goal set ($0)`;
+      if (r.owed === 0) return `✅ ${mention(r.id)} — ${r.count}/${r.goal} · $0`;
+      return `💸 ${mention(r.id)} — ${r.count}/${r.goal} · **$${r.owed}**`;
+    })
+    .join("\n");
+
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content:
+        `💰 **Money owed so far this week** ($${DOLLARS_PER_MISS} per problem short of goal)\n` +
+        `${body}\n\n**Pool total: $${total}**\n` +
+        `_Locks in at week's end (Monday 12:00 AM ET). Solve more to lower your tab!_`,
       allowed_mentions: { parse: [] as string[] },
     },
   };
