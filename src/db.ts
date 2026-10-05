@@ -220,6 +220,25 @@ export async function setJobState(db: D1Database, jobName: string, lastKey: stri
     .run();
 }
 
+/**
+ * Total problems each member fell short of goal across all FINALIZED weeks
+ * (from weekly_summary). Returns a map of discord_user_id -> shortfall sum.
+ * Weeks with no goal (goal null/<=0) contribute 0.
+ */
+export async function historicalShortfall(db: D1Database): Promise<Map<string, number>> {
+  const res = await db
+    .prepare(
+      `SELECT discord_user_id,
+              SUM(CASE WHEN goal > 0 AND goal > unique_count THEN goal - unique_count ELSE 0 END) AS short
+         FROM weekly_summary
+        GROUP BY discord_user_id`
+    )
+    .all<{ discord_user_id: string; short: number }>();
+  const map = new Map<string, number>();
+  for (const r of res.results ?? []) map.set(r.discord_user_id, r.short ?? 0);
+  return map;
+}
+
 export async function saveWeeklySummary(
   db: D1Database,
   weekKey: string,

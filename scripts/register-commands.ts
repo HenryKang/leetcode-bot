@@ -68,6 +68,10 @@ const commands = [
     description: "Show how much each member owes this week ($1 per problem short of their goal).",
   },
   {
+    name: "money_total",
+    description: "Show total money owed so far — all finalized weeks plus the current week.",
+  },
+  {
     name: "health",
     description: "Check each linked member: is their LeetCode feed visible and being tracked?",
   },

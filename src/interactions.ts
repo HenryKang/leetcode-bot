@@ -11,6 +11,7 @@ import {
 import {
   deactivateMember,
   getMember,
+  historicalShortfall,
   listActiveMembers,
   setGoal,
   statsSince,
@@ -79,6 +80,8 @@ export async function handleInteraction(i: Interaction, env: Env, ctx: Execution
       return handleLeaderboard(i, env);
     case "money":
       return handleMoney(i, env);
+    case "money_total":
+      return handleMoneyTotal(i, env);
     case "health":
       // Calls LeetCode per member -> defer, then edit the reply.
       ctx.waitUntil(doHealth(i, env));
@@ -305,6 +308,44 @@ async function handleMoney(i: Interaction, env: Env) {
         `💰 **Money owed so far this week** ($${DOLLARS_PER_MISS} per problem short of goal)\n` +
         `${body}\n\n**Pool total: $${total}**\n` +
         `_Locks in at week's end (Monday 12:00 AM ET). Solve more to lower your tab!_`,
+      allowed_mentions: { parse: [] as string[] },
+    },
+  };
+}
+
+async function handleMoneyTotal(i: Interaction, env: Env) {
+  const week = currentWeekKey();
+  const members = await listActiveMembers(env.DB);
+  if (members.length === 0) {
+    return ephemeralReply("No one is linked yet. Be the first with `/link`!");
+  }
+  const hist = await historicalShortfall(env.DB); // finalized weeks
+  const rows: { id: string; past: number; current: number; total: number }[] = [];
+  for (const m of members) {
+    const past = (hist.get(m.discord_user_id) ?? 0) * DOLLARS_PER_MISS;
+    const goal = m.weekly_goal;
+    const count = await weeklyUniqueCount(env.DB, m.discord_user_id, week);
+    const current = goal && goal > 0 ? Math.max(0, goal - count) * DOLLARS_PER_MISS : 0;
+    rows.push({ id: m.discord_user_id, past, current, total: past + current });
+  }
+  rows.sort((a, b) => b.total - a.total);
+
+  const grand = rows.reduce((s, r) => s + r.total, 0);
+  const body = rows
+    .map((r) =>
+      r.total === 0
+        ? `✅ ${mention(r.id)} — $0`
+        : `💸 ${mention(r.id)} — **$${r.total}**  _(past $${r.past} + this week $${r.current})_`
+    )
+    .join("\n");
+
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content:
+        `💰 **Total money owed so far** ($${DOLLARS_PER_MISS} per problem short of goal)\n` +
+        `${body}\n\n**Grand total: $${grand}**\n` +
+        `_All finalized weeks + the current (in-progress) week._`,
       allowed_mentions: { parse: [] as string[] },
     },
   };
