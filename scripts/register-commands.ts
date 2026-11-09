@@ -69,7 +69,7 @@ const commands = [
   },
   {
     name: "money_total",
-    description: "Show total money owed so far — all finalized weeks plus the current week.",
+    description: "Show confirmed money owed from all finalized weeks (excludes the current week).",
   },
   {
     name: "health",

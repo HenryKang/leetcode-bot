@@ -314,38 +314,30 @@ async function handleMoney(i: Interaction, env: Env) {
 }
 
 async function handleMoneyTotal(i: Interaction, env: Env) {
-  const week = currentWeekKey();
   const members = await listActiveMembers(env.DB);
   if (members.length === 0) {
     return ephemeralReply("No one is linked yet. Be the first with `/link`!");
   }
-  const hist = await historicalShortfall(env.DB); // finalized weeks
-  const rows: { id: string; past: number; current: number; total: number }[] = [];
-  for (const m of members) {
-    const past = (hist.get(m.discord_user_id) ?? 0) * DOLLARS_PER_MISS;
-    const goal = m.weekly_goal;
-    const count = await weeklyUniqueCount(env.DB, m.discord_user_id, week);
-    const current = goal && goal > 0 ? Math.max(0, goal - count) * DOLLARS_PER_MISS : 0;
-    rows.push({ id: m.discord_user_id, past, current, total: past + current });
-  }
-  rows.sort((a, b) => b.total - a.total);
+  // Confirmed debt only: finalized weeks. The current week is variable and excluded.
+  const hist = await historicalShortfall(env.DB);
+  const rows = members.map((m) => ({
+    id: m.discord_user_id,
+    owed: (hist.get(m.discord_user_id) ?? 0) * DOLLARS_PER_MISS,
+  }));
+  rows.sort((a, b) => b.owed - a.owed);
 
-  const grand = rows.reduce((s, r) => s + r.total, 0);
+  const grand = rows.reduce((s, r) => s + r.owed, 0);
   const body = rows
-    .map((r) =>
-      r.total === 0
-        ? `✅ ${mention(r.id)} — $0`
-        : `💸 ${mention(r.id)} — **$${r.total}**  _(past $${r.past} + this week $${r.current})_`
-    )
+    .map((r) => (r.owed === 0 ? `✅ ${mention(r.id)} — $0` : `💸 ${mention(r.id)} — **$${r.owed}**`))
     .join("\n");
 
   return {
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
     data: {
       content:
-        `💰 **Total money owed so far** ($${DOLLARS_PER_MISS} per problem short of goal)\n` +
+        `💰 **Total money owed (confirmed)** ($${DOLLARS_PER_MISS} per problem short of goal)\n` +
         `${body}\n\n**Grand total: $${grand}**\n` +
-        `_All finalized weeks + the current (in-progress) week._`,
+        `_Finalized weeks only — the current week isn't counted until it ends._`,
       allowed_mentions: { parse: [] as string[] },
     },
   };
